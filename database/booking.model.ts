@@ -27,11 +27,17 @@ const BookingSchema = new Schema<IBooking>(
   {
     timestamps: true,
     strict: true,
-  }
+  },
 );
 
 // Additional index on eventId to optimize event-based queries
 BookingSchema.index({ eventId: 1 });
+BookingSchema.index({ eventId: 1, createdAt: -1 });
+BookingSchema.index({ email: 1 });
+BookingSchema.index(
+  { eventId: 1, email: 1 },
+  { unique: true, name: 'uniq_event_email' },
+);
 
 // Simple email validation regex for common email formats
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,7 +60,11 @@ BookingSchema.pre<IBooking>('save', async function preSave(next) {
       return next(new Error('Referenced event does not exist.'));
     }
   } catch (error) {
-    return next(error instanceof Error ? error : new Error('Failed to validate event reference.'));
+    return next(
+      error instanceof Error
+        ? error
+        : new Error('Failed to validate event reference.'),
+    );
   }
 
   return next();

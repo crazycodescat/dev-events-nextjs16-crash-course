@@ -14,13 +14,6 @@ declare global {
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Validate MongoDB URL exists
-if (!MONGODB_URI) {
-  throw new Error(
-    'Please define the MONGODB_URI environment variable inside .env.local',
-  );
-}
-
 // Initialize the cache on the global object to persist across hot reloads i
 let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
 
@@ -36,6 +29,13 @@ async function connectDB(): Promise<typeof mongoose> {
 
   // Return existing connection promise if one is in progress
   if (!cached.promise) {
+    // Validate MongoDB URL exists
+    if (!MONGODB_URI) {
+      throw new Error(
+        'Please define the MONGODB_URI environment variable inside .env.local',
+      );
+    }
+
     const options = {
       bufferCommands: false, // Disable Mongoose buffering
     };
