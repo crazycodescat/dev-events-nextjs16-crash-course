@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 // Strongly typed Event document
-export interface IEvent extends Document {
+interface IEvent extends Document {
   title: string;
   slug: string;
   description: string;
@@ -32,7 +32,7 @@ const generateSlug = (title: string): string => {
 const EventSchema = new Schema<IEvent>(
   {
     title: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, trim: true },
+    slug: { type: String, trim: true },
     description: { type: String, required: true, trim: true },
     overview: { type: String, required: true, trim: true },
     image: { type: String, required: true, trim: true },
@@ -49,7 +49,7 @@ const EventSchema = new Schema<IEvent>(
   {
     timestamps: true,
     strict: true,
-  }
+  },
 );
 
 // Unique index on slug for fast lookups and enforcing uniqueness
@@ -60,20 +60,22 @@ EventSchema.pre<IEvent>('save', function preSave(next) {
   const event = this;
 
   // Ensure required string fields are present and non-empty
-  const requiredStringFields: Array<keyof Pick<
-    IEvent,
-    | 'title'
-    | 'description'
-    | 'overview'
-    | 'image'
-    | 'venue'
-    | 'location'
-    | 'date'
-    | 'time'
-    | 'mode'
-    | 'audience'
-    | 'organizer'
-  >> = [
+  const requiredStringFields: Array<
+    keyof Pick<
+      IEvent,
+      | 'title'
+      | 'description'
+      | 'overview'
+      | 'image'
+      | 'venue'
+      | 'location'
+      | 'date'
+      | 'time'
+      | 'mode'
+      | 'audience'
+      | 'organizer'
+    >
+  > = [
     'title',
     'description',
     'overview',
@@ -91,19 +93,26 @@ EventSchema.pre<IEvent>('save', function preSave(next) {
     const rawValue: unknown = event[field];
     const value = typeof rawValue === 'string' ? rawValue.trim() : '';
     if (!value) {
-      return next(new Error(`Field "${String(field)}" is required and cannot be empty.`));
+      return next(
+        new Error(`Field "${String(field)}" is required and cannot be empty.`),
+      );
     }
     // Normalize by trimming whitespace
     (event as never)[field] = value as never;
   }
 
   // Validate required array fields are present and non-empty
-  const requiredArrayFields: Array<keyof Pick<IEvent, 'agenda' | 'tags'>> = ['agenda', 'tags'];
+  const requiredArrayFields: Array<keyof Pick<IEvent, 'agenda' | 'tags'>> = [
+    'agenda',
+    'tags',
+  ];
 
   for (const field of requiredArrayFields) {
     const rawValue: unknown = event[field];
     if (!Array.isArray(rawValue) || rawValue.length === 0) {
-      return next(new Error(`Field "${String(field)}" is required and cannot be empty.`));
+      return next(
+        new Error(`Field "${String(field)}" is required and cannot be empty.`),
+      );
     }
 
     const normalizedArray = rawValue.map((item) => {
@@ -115,7 +124,9 @@ EventSchema.pre<IEvent>('save', function preSave(next) {
 
     if (normalizedArray.some((item) => !item)) {
       return next(
-        new Error(`Field "${String(field)}" must be a non-empty array of non-empty strings.`)
+        new Error(
+          `Field "${String(field)}" must be a non-empty array of non-empty strings.`,
+        ),
       );
     }
 
@@ -130,7 +141,9 @@ EventSchema.pre<IEvent>('save', function preSave(next) {
   // Normalize date to ISO format (YYYY-MM-DD)
   const parsedDate = new Date(event.date);
   if (Number.isNaN(parsedDate.getTime())) {
-    return next(new Error('Invalid date format. Please provide a valid date string.'));
+    return next(
+      new Error('Invalid date format. Please provide a valid date string.'),
+    );
   }
   event.date = parsedDate.toISOString().split('T')[0];
 
@@ -138,14 +151,18 @@ EventSchema.pre<IEvent>('save', function preSave(next) {
   const timeInput = event.time.trim();
   const timeMatch = /^([0-9]{1,2}):([0-9]{2})$/.exec(timeInput);
   if (!timeMatch) {
-    return next(new Error('Invalid time format. Expected HH:mm in 24-hour format.'));
+    return next(
+      new Error('Invalid time format. Expected HH:mm in 24-hour format.'),
+    );
   }
 
   const hours = Number(timeMatch[1]);
   const minutes = Number(timeMatch[2]);
 
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-    return next(new Error('Invalid time value. Hours must be 0-23 and minutes 0-59.'));
+    return next(
+      new Error('Invalid time value. Hours must be 0-23 and minutes 0-59.'),
+    );
   }
 
   event.time = `${hours.toString().padStart(2, '0')}:${minutes
@@ -155,9 +172,6 @@ EventSchema.pre<IEvent>('save', function preSave(next) {
   return next();
 });
 
-// Reuse existing model in dev to avoid OverwriteModelError in Next.js
-export const Event: Model<IEvent> =
-  (mongoose.models.Event as Model<IEvent> | undefined) ||
-  mongoose.model<IEvent>('Event', EventSchema);
+export default mongoose.models.Event || mongoose.model('Event', EventSchema);
 
-export default Event;
+export { IEvent };
