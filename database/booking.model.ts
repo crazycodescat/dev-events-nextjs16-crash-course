@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import Event from './event.model';
 
 // Strongly typed Booking document
-export interface IBooking extends Document {
+interface IBooking extends Document {
   eventId: Types.ObjectId;
   email: string;
   createdAt: Date;
@@ -75,4 +75,7 @@ export const Booking: Model<IBooking> =
   (mongoose.models.Booking as Model<IBooking> | undefined) ||
   mongoose.model<IBooking>('Booking', BookingSchema);
 
-export default Booking;
+export default mongoose.models.Booking ||
+  mongoose.model('Booking', BookingSchema);
+
+export { IBooking };
